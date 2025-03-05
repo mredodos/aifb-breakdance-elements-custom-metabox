@@ -42,83 +42,124 @@ class MetaBoxIntegration {
     /**
      * Gestisce i campi clonabili di Meta Box
      *
-     * @param mixed $value Il valore del campo
-     * @param array $field Informazioni sul campo
-     * @return mixed Il valore modificato
+     * @param mixed $value Valore del campo
+     * @param array|null $field Informazioni sul campo
+     * @return mixed Valore elaborato
      */
-    public function handleClonableFields($value, $field) {
-        // Verifica se è un campo Meta Box
-        if (!isset($field['provider']) || $field['provider'] !== 'metabox') {
+    public function handleClonableFields($value, $field = null) {
+        // Verifica se il valore è un array
+        if (!is_array($value)) {
             return $value;
         }
-
-        // Gestisci i campi clonabili
-        if (is_array($value) && !empty($value)) {
-            // Se è un array di array (campo clonabile di gruppo)
-            if (isset($value[0]) && is_array($value[0])) {
-                // Restituisci il primo elemento per la preview
-                return $value[0];
-            }
-            
-            // Se è un array semplice (campo clonabile normale)
-            if (count($value) > 1) {
-                // Restituisci il primo elemento per la preview
-                return reset($value);
-            }
+        
+        // Verifica se il campo è un campo Meta Box
+        if (!$field || !isset($field['id'])) {
+            return $value;
         }
-
+        
+        // Ottieni il tipo di campo
+        $fieldType = $this->getFieldType($field['id']);
+        
+        // Verifica se il campo è clonabile
+        $isCloneable = $this->isFieldCloneable($field['id']);
+        
+        // Se il campo è clonabile, restituisci un'istanza di MetaBoxRepeaterData
+        if ($isCloneable) {
+            return MetaBoxRepeaterData::fromArray($value);
+        }
+        
+        // Altrimenti, restituisci il valore originale
         return $value;
     }
 
     /**
-     * Ottiene tutti i campi Meta Box disponibili
+     * Ottieni tutti i campi Meta Box disponibili
      *
      * @return array Array di campi Meta Box
      */
     public function getAvailableFields(): array {
+        // Utilizzo una cache statica per evitare chiamate ripetute
+        static $cachedFields = null;
+        
+        if ($cachedFields !== null) {
+            return $cachedFields;
+        }
+        
+        // Verifica se siamo nel builder di Breakdance
+        $isInBuilder = defined('BREAKDANCE_BUILDING') && BREAKDANCE_BUILDING;
+        
         if (!function_exists('rwmb_get_registry')) {
-            return [];
+            $cachedFields = [];
+            return $cachedFields;
         }
 
         $fields = [];
         $registry = rwmb_get_registry('field');
         
         if (!$registry) {
-            return [];
+            $cachedFields = [];
+            return $cachedFields;
         }
         
-        $metaBoxes = $registry->get_by_object_type('post');
-        
-        if (empty($metaBoxes)) {
-            return [];
-        }
-        
-        foreach ($metaBoxes as $postType => $metaBoxGroups) {
-            foreach ($metaBoxGroups as $metaBox) {
-                if (!isset($metaBox['fields']) || !is_array($metaBox['fields'])) {
-                    continue;
+        try {
+            // Utilizziamo un timeout per evitare blocchi
+            $startTime = microtime(true);
+            $timeout = 1.0; // 1 secondo di timeout
+            
+            $metaBoxes = $registry->get_by_object_type('post');
+            
+            if (empty($metaBoxes)) {
+                $cachedFields = [];
+                return $cachedFields;
+            }
+            
+            foreach ($metaBoxes as $postType => $metaBoxGroups) {
+                // Verifica se abbiamo superato il timeout
+                if ($isInBuilder && (microtime(true) - $startTime) > $timeout) {
+                    break; // Interrompi il ciclo se siamo nel builder e abbiamo superato il timeout
                 }
                 
-                foreach ($metaBox['fields'] as $field) {
-                    if (!isset($field['id'])) {
+                foreach ($metaBoxGroups as $metaBox) {
+                    // Verifica se abbiamo superato il timeout
+                    if ($isInBuilder && (microtime(true) - $startTime) > $timeout) {
+                        break; // Interrompi il ciclo se siamo nel builder e abbiamo superato il timeout
+                    }
+                    
+                    if (!isset($metaBox['fields']) || !is_array($metaBox['fields'])) {
                         continue;
                     }
                     
-                    $fieldLabel = isset($field['name']) ? $field['name'] : $field['id'];
-                    $fieldType = isset($field['type']) ? $field['type'] : 'unknown';
-                    $isCloneable = isset($field['clone']) && $field['clone'];
-                    
-                    $fields[$field['id']] = [
-                        'id' => $field['id'],
-                        'name' => $fieldLabel,
-                        'type' => $fieldType,
-                        'is_cloneable' => $isCloneable,
-                    ];
+                    foreach ($metaBox['fields'] as $field) {
+                        // Verifica se abbiamo superato il timeout
+                        if ($isInBuilder && (microtime(true) - $startTime) > $timeout) {
+                            break; // Interrompi il ciclo se siamo nel builder e abbiamo superato il timeout
+                        }
+                        
+                        if (!isset($field['id'])) {
+                            continue;
+                        }
+                        
+                        $fieldLabel = isset($field['name']) ? $field['name'] : $field['id'];
+                        $fieldType = isset($field['type']) ? $field['type'] : 'unknown';
+                        $isCloneable = isset($field['clone']) && $field['clone'];
+                        
+                        $fields[$field['id']] = [
+                            'id' => $field['id'],
+                            'name' => $fieldLabel,
+                            'type' => $fieldType,
+                            'is_cloneable' => $isCloneable,
+                        ];
+                    }
                 }
             }
+        } catch (\Exception $e) {
+            // In caso di errore, restituisci un array vuoto
+            $cachedFields = [];
+            return $cachedFields;
         }
         
-        return $fields;
+        $cachedFields = $fields;
+        return $cachedFields;
     }
 
     /**
@@ -129,20 +170,66 @@ class MetaBoxIntegration {
      * @return mixed Valore del campo
      */
     public function getFieldValue(string $fieldId, ?int $postId = null): mixed {
+        // Utilizzo una cache statica per evitare chiamate ripetute
+        static $valueCache = [];
+        
+        // Crea una chiave di cache unica per questo campo e post
+        $cacheKey = $fieldId . '_' . ($postId ?? get_the_ID());
+        
+        // Se il valore è già in cache, restituiscilo
+        if (isset($valueCache[$cacheKey])) {
+            return $valueCache[$cacheKey];
+        }
+        
+        // Verifica se siamo nel builder di Breakdance
+        $isInBuilder = defined('BREAKDANCE_BUILDING') && BREAKDANCE_BUILDING;
+        
+        // Se siamo nel builder, restituisci un valore di esempio
+        if ($isInBuilder) {
+            // Verifica se il campo è clonabile
+            $isCloneable = $this->isFieldCloneable($fieldId);
+            
+            if ($isCloneable) {
+                $valueCache[$cacheKey] = new MetaBoxRepeaterData([
+                    'https://example.com/link1',
+                    'https://example.com/link2'
+                ]);
+            } else {
+                $valueCache[$cacheKey] = 'https://example.com';
+            }
+            
+            return $valueCache[$cacheKey];
+        }
+        
+        // Se Meta Box non è attivo, restituisci un valore vuoto
         if (!function_exists('rwmb_meta')) {
-            return '';
+            $valueCache[$cacheKey] = '';
+            return $valueCache[$cacheKey];
         }
-
-        if (null === $postId) {
-            global $post;
-            $postId = $post->ID ?? 0;
+        
+        try {
+            // Ottieni il valore del campo
+            $value = rwmb_meta($fieldId, '', $postId);
+            
+            // Verifica se il campo è clonabile
+            $isCloneable = $this->isFieldCloneable($fieldId);
+            
+            // Gestisci i campi clonabili
+            if ($isCloneable && is_array($value)) {
+                $value = new MetaBoxRepeaterData($value);
+            } elseif ($isCloneable && !is_array($value)) {
+                $value = new MetaBoxRepeaterData([$value]);
+            }
+            
+            // Memorizza il valore nella cache
+            $valueCache[$cacheKey] = $value;
+            
+            return $value;
+        } catch (\Exception $e) {
+            // In caso di errore, restituisci un valore vuoto
+            $valueCache[$cacheKey] = '';
+            return $valueCache[$cacheKey];
         }
-
-        if (!$postId) {
-            return '';
-        }
-
-        return rwmb_meta($fieldId, '', $postId);
     }
 
     /**
@@ -175,5 +262,115 @@ class MetaBoxIntegration {
         }
         
         return 'unknown';
+    }
+
+    /**
+     * Itera su un campo clonabile
+     * 
+     * @param string $fieldId ID del campo
+     * @param callable $callback Funzione di callback
+     * @param int|null $postId ID del post (opzionale)
+     * @return array Risultati dell'iterazione
+     */
+    public function iterateCloneableField(string $fieldId, callable $callback, ?int $postId = null): array {
+        // Ottieni il valore del campo
+        $value = $this->getFieldValue($fieldId, $postId);
+        
+        // Se il valore non è un'istanza di MetaBoxRepeaterData, restituisci un array vuoto
+        if (!$value instanceof MetaBoxRepeaterData) {
+            return [];
+        }
+        
+        // Ottieni i valori del campo
+        $values = $value->getValue();
+        
+        // Se non ci sono valori, restituisci un array vuoto
+        if (empty($values)) {
+            return [];
+        }
+        
+        // Itera sui valori e applica la funzione di callback
+        $results = [];
+        foreach ($values as $index => $item) {
+            $results[] = $callback($item, $index);
+        }
+        
+        return $results;
+    }
+    
+    /**
+     * Ottiene un elemento specifico di un campo clonabile
+     * 
+     * @param string $fieldId ID del campo
+     * @param int $index Indice dell'elemento
+     * @param int|null $postId ID del post (opzionale)
+     * @return mixed Valore dell'elemento
+     */
+    public function getCloneableFieldItem(string $fieldId, int $index, ?int $postId = null): mixed {
+        // Ottieni il valore del campo
+        $value = $this->getFieldValue($fieldId, $postId);
+        
+        // Se il valore non è un'istanza di MetaBoxRepeaterData, restituisci null
+        if (!$value instanceof MetaBoxRepeaterData) {
+            return null;
+        }
+        
+        // Ottieni i valori del campo
+        $values = $value->getValue();
+        
+        // Se l'indice non esiste, restituisci null
+        if (!isset($values[$index])) {
+            return null;
+        }
+        
+        return $values[$index];
+    }
+}
+
+/**
+ * Classe per gestire i dati dei campi clonabili (ripetitori)
+ */
+class MetaBoxRepeaterData {
+    /**
+     * @var array Valore del campo clonabile
+     */
+    public array $value = [];
+
+    /**
+     * Costruttore
+     * 
+     * @param array $value Valore del campo clonabile
+     */
+    public function __construct(array $value = []) {
+        $this->value = $value;
+    }
+
+    /**
+     * Ottiene il valore del campo clonabile
+     * 
+     * @param array $attributes Attributi aggiuntivi
+     * @return array Valore del campo clonabile
+     */
+    public function getValue(array $attributes = []): array {
+        return $this->value;
+    }
+
+    /**
+     * Verifica se il campo ha un valore
+     * 
+     * @return bool True se il campo ha un valore, false altrimenti
+     */
+    public function hasValue(): bool {
+        return !empty($this->value);
+    }
+
+    /**
+     * Crea un'istanza da un array
+     * 
+     * @param array $repeater Array di valori
+     * @return self Istanza della classe
+     */
+    public static function fromArray(array $repeater): self {
+        return new self($repeater);
     }
 } 

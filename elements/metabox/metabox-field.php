@@ -18,12 +18,12 @@ class MetaBoxField extends \Breakdance\Elements\Element
 {
     static function name()
     {
-        return 'Meta Box URL Field';
+        return esc_html__('Meta Box URL Field', 'aifb-breakdance-metabox');
     }
 
     static function slug()
     {
-        return 'aifb-metabox-url-field';
+        return 'aifb-metabox-field';
     }
 
     static function tag()
@@ -33,12 +33,12 @@ class MetaBoxField extends \Breakdance\Elements\Element
 
     static function category()
     {
-        return 'dynamic';
+        return esc_html__('Custom Fields', 'aifb-breakdance-metabox');
     }
 
     static function icon()
     {
-        return 'DatabaseIcon';
+        return 'LinkIcon';
     }
 
     static function label()
@@ -59,6 +59,130 @@ class MetaBoxField extends \Breakdance\Elements\Element
     static function cssTemplate()
     {
         return file_get_contents(__DIR__ . '/css.twig');
+    }
+
+    /**
+     * Regola di nesting - definisce come l'elemento può essere annidato
+     */
+    static function nestingRule()
+    {
+        return ["type" => "final"];
+    }
+
+    /**
+     * Barre di spaziatura - definisce le barre di spaziatura visibili nel builder
+     */
+    static function spacingBars()
+    {
+        return [
+            [
+                'cssProperty' => 'margin-top', 
+                'location' => 'outside-top', 
+                'affectedPropertyPath' => 'design.spacing.margin_top.%%BREAKPOINT%%'
+            ], 
+            [
+                'cssProperty' => 'margin-bottom', 
+                'location' => 'outside-bottom', 
+                'affectedPropertyPath' => 'design.spacing.margin_bottom.%%BREAKPOINT%%'
+            ]
+        ];
+    }
+
+    /**
+     * Attributi - definisce attributi HTML aggiuntivi
+     */
+    static function attributes()
+    {
+        return false;
+    }
+
+    /**
+     * Sperimentale - indica se l'elemento è sperimentale
+     */
+    static function experimental()
+    {
+        return false;
+    }
+
+    /**
+     * Ordine - definisce l'ordine dell'elemento nella lista
+     */
+    static function order()
+    {
+        return 2101;
+    }
+
+    /**
+     * Percorsi di proprietà dinamiche - definisce quali proprietà possono accettare dati dinamici
+     */
+    static function dynamicPropertyPaths()
+    {
+        return [
+            [
+                'accepts' => 'string', 
+                'path' => 'content.field.field_id'
+            ],
+            [
+                'accepts' => 'string', 
+                'path' => 'content.display.custom_label'
+            ],
+            [
+                'accepts' => 'string', 
+                'path' => 'content.display.link_text'
+            ]
+        ];
+    }
+
+    /**
+     * Classi aggiuntive - definisce classi CSS aggiuntive
+     */
+    static function additionalClasses()
+    {
+        return false;
+    }
+
+    /**
+     * Gestione del progetto - impostazioni per la gestione del progetto
+     */
+    static function projectManagement()
+    {
+        return false;
+    }
+
+    /**
+     * Percorsi di proprietà da includere nella whitelist in flatProps
+     */
+    static function propertyPathsToWhitelistInFlatProps()
+    {
+        return [
+            'content.field.field_id',
+            'content.field.is_cloneable',
+            'content.display.show_label',
+            'content.display.custom_label',
+            'content.display.link_text',
+            'content.display.target',
+            'content.display.add_nofollow',
+            'content.layout.list_type',
+            'content.layout.max_items'
+        ];
+    }
+
+    /**
+     * Percorsi di proprietà che richiedono il rendering SSR quando il valore cambia
+     */
+    static function propertyPathsToSsrElementWhenValueChanges()
+    {
+        return [
+            'content.field.field_id',
+            'content.field.is_cloneable',
+            'content.display.show_label',
+            'content.display.custom_label',
+            'content.display.link_text',
+            'content.display.target',
+            'content.display.add_nofollow',
+            'content.layout.list_type',
+            'content.layout.max_items'
+        ];
     }
 
     static function controls()
@@ -242,6 +366,9 @@ class MetaBoxField extends \Breakdance\Elements\Element
 
     public function render($props, $breakpoints, $inBuilder)
     {
+        // Limita l'esecuzione nel builder per evitare blocchi
+        $isInBuilder = defined('BREAKDANCE_BUILDING') && BREAKDANCE_BUILDING;
+        
         $fieldId = $props['content']['field']['field_id'] ?? '';
         $isCloneable = $props['content']['field']['is_cloneable'] ?? false;
         $showLabel = $props['content']['display']['show_label'] ?? true;
@@ -256,8 +383,11 @@ class MetaBoxField extends \Breakdance\Elements\Element
             return '<div class="aifb-metabox-field-error">Please select a Meta Box field.</div>';
         }
         
-        // Ottieni l'istanza di MetaBoxIntegration
-        $metaBoxIntegration = MetaBoxIntegration::getInstance();
+        // Ottieni l'istanza di MetaBoxIntegration una sola volta
+        static $metaBoxIntegration = null;
+        if ($metaBoxIntegration === null) {
+            $metaBoxIntegration = \AIFB\BreakdanceMetaBox\Core\MetaBoxIntegration::getInstance();
+        }
         
         // Verifica se il campo è clonabile (se non specificato manualmente)
         if (!isset($props['content']['field']['is_cloneable'])) {
@@ -270,106 +400,120 @@ class MetaBoxField extends \Breakdance\Elements\Element
             $fieldLabel = !empty($customLabel) ? $customLabel : $this->getFieldLabel($fieldId);
         }
         
-        // Get field value(s)
-        $values = $this->getFieldValue($fieldId, $isCloneable);
-        
-        if (empty($values)) {
-            return '<div class="aifb-metabox-field-empty">No value found for this field.</div>';
-        }
-        
-        // Start output
+        // Inizia l'output
         ob_start();
         
         echo '<div class="aifb-metabox-field">';
         
-        // Show label if needed
+        // Mostra l'etichetta se richiesto
         if ($showLabel && !empty($fieldLabel)) {
             echo '<div class="aifb-metabox-field-label">' . esc_html($fieldLabel) . '</div>';
         }
         
-        // Handle single value
-        if (!$isCloneable || !is_array($values)) {
-            $rel = $addNofollow ? ' rel="nofollow"' : '';
-            $displayText = !empty($linkText) ? $linkText : $values;
-            echo '<a href="' . esc_url($values) . '" target="' . esc_attr($target) . '"' . $rel . ' class="aifb-metabox-field-link">' . esc_html($displayText) . '</a>';
-        } 
-        // Handle multiple values (cloneable field)
-        else {
-            // Limit items if max_items is set
-            if ($maxItems > 0 && count($values) > $maxItems) {
-                $values = array_slice($values, 0, $maxItems);
+        // Gestisci i diversi tipi di layout per campi clonabili
+        if ($isCloneable) {
+            // Funzione di callback per renderizzare un elemento
+            $renderItem = function($value, $index) use ($linkText, $target, $addNofollow) {
+                ob_start();
+                $this->renderLink($value, $linkText, $target, $addNofollow);
+                return ob_get_clean();
+            };
+            
+            // Ottieni i risultati dell'iterazione
+            $items = $this->iterateCloneableField($fieldId, $renderItem);
+            
+            // Limita il numero di elementi se specificato
+            if ($maxItems > 0 && count($items) > $maxItems) {
+                $items = array_slice($items, 0, $maxItems);
             }
             
-            // Determine list type
+            // Se siamo nel builder, limita il numero di elementi per evitare blocchi
+            if ($isInBuilder && count($items) > 3) {
+                $items = array_slice($items, 0, 3);
+            }
+            
+            // Renderizza gli elementi in base al tipo di lista
             switch ($listType) {
                 case 'ul':
                     echo '<ul class="aifb-metabox-field-list">';
-                    foreach ($values as $value) {
-                        if (!empty($value)) {
-                            $rel = $addNofollow ? ' rel="nofollow"' : '';
-                            $displayText = !empty($linkText) ? $linkText : $value;
-                            echo '<li><a href="' . esc_url($value) . '" target="' . esc_attr($target) . '"' . $rel . ' class="aifb-metabox-field-link">' . esc_html($displayText) . '</a></li>';
-                        }
+                    foreach ($items as $item) {
+                        echo '<li>' . $item . '</li>';
                     }
                     echo '</ul>';
                     break;
                     
                 case 'ol':
                     echo '<ol class="aifb-metabox-field-list">';
-                    foreach ($values as $value) {
-                        if (!empty($value)) {
-                            $rel = $addNofollow ? ' rel="nofollow"' : '';
-                            $displayText = !empty($linkText) ? $linkText : $value;
-                            echo '<li><a href="' . esc_url($value) . '" target="' . esc_attr($target) . '"' . $rel . ' class="aifb-metabox-field-link">' . esc_html($displayText) . '</a></li>';
-                        }
+                    foreach ($items as $item) {
+                        echo '<li>' . $item . '</li>';
                     }
                     echo '</ol>';
                     break;
                     
                 case 'comma':
-                    $links = [];
-                    foreach ($values as $value) {
-                        if (!empty($value)) {
-                            $rel = $addNofollow ? ' rel="nofollow"' : '';
-                            $displayText = !empty($linkText) ? $linkText : $value;
-                            $links[] = '<a href="' . esc_url($value) . '" target="' . esc_attr($target) . '"' . $rel . ' class="aifb-metabox-field-link">' . esc_html($displayText) . '</a>';
-                        }
-                    }
-                    echo '<div class="aifb-metabox-field-comma">' . implode(', ', $links) . '</div>';
+                    echo '<div class="aifb-metabox-field-comma">';
+                    echo implode(', ', $items);
+                    echo '</div>';
                     break;
                     
-                default: // 'none'
-                    echo '<div class="aifb-metabox-field-links">';
-                    foreach ($values as $value) {
-                        if (!empty($value)) {
-                            $rel = $addNofollow ? ' rel="nofollow"' : '';
-                            $displayText = !empty($linkText) ? $linkText : $value;
-                            echo '<div class="aifb-metabox-field-link-item"><a href="' . esc_url($value) . '" target="' . esc_attr($target) . '"' . $rel . ' class="aifb-metabox-field-link">' . esc_html($displayText) . '</a></div>';
-                        }
+                default:
+                    echo '<div class="aifb-metabox-field-items">';
+                    foreach ($items as $item) {
+                        echo '<div class="aifb-metabox-field-item">' . $item . '</div>';
                     }
                     echo '</div>';
                     break;
             }
+        } else {
+            // Campo singolo
+            echo '<div class="aifb-metabox-field-single">';
+            $value = $this->getFieldValue($fieldId, false);
+            $this->renderLink($value, $linkText, $target, $addNofollow);
+            echo '</div>';
         }
         
         echo '</div>';
         
         return ob_get_clean();
     }
+    
+    /**
+     * Renderizza un link
+     * 
+     * @param string $url URL del link
+     * @param string $text Testo del link (opzionale)
+     * @param string $target Target del link
+     * @param bool $addNofollow Aggiungere nofollow
+     */
+    private function renderLink($url, $text, $target, $addNofollow)
+    {
+        if (empty($url)) {
+            echo '<span class="aifb-metabox-field-empty">No value</span>';
+            return;
+        }
+        
+        $rel = $addNofollow ? ' rel="nofollow"' : '';
+        $linkText = !empty($text) ? esc_html($text) : esc_url($url);
+        
+        echo '<a href="' . esc_url($url) . '" target="' . esc_attr($target) . '"' . $rel . '>' . $linkText . '</a>';
+    }
 
     public function getFieldValue($fieldId, $isCloneable)
     {
-        // Ottieni l'istanza di MetaBoxIntegration
-        $metaBoxIntegration = MetaBoxIntegration::getInstance();
+        // Ottieni l'istanza di MetaBoxIntegration una sola volta
+        static $metaBoxIntegration = null;
+        if ($metaBoxIntegration === null) {
+            $metaBoxIntegration = \AIFB\BreakdanceMetaBox\Core\MetaBoxIntegration::getInstance();
+        }
         
         // Se siamo nel builder, restituiamo valori di esempio
         if (defined('BREAKDANCE_BUILDING') && BREAKDANCE_BUILDING) {
             if ($isCloneable) {
-                return [
+                return new \AIFB\BreakdanceMetaBox\Core\MetaBoxRepeaterData([
                     'https://example.com/link1',
                     'https://example.com/link2',
                     'https://example.com/link3'
-                ];
+                ]);
             } else {
                 return 'https://example.com';
             }
@@ -378,12 +522,26 @@ class MetaBoxField extends \Breakdance\Elements\Element
         // Ottieni il valore del campo
         $value = $metaBoxIntegration->getFieldValue($fieldId);
         
-        // Per i campi clonabili, assicuriamoci che il valore sia un array
+        // Gestisci i campi clonabili
         if ($isCloneable && !is_array($value)) {
-            if (empty($value)) {
-                return [];
-            }
-            return [$value];
+            // Se il campo è clonabile ma il valore non è un array, lo convertiamo in array
+            return new \AIFB\BreakdanceMetaBox\Core\MetaBoxRepeaterData([$value]);
+        }
+        
+        // Gestisci i campi clonabili con array
+        if ($isCloneable && is_array($value)) {
+            return new \AIFB\BreakdanceMetaBox\Core\MetaBoxRepeaterData($value);
+        }
+        
+        // Gestisci i campi non clonabili
+        if (!$isCloneable && is_array($value)) {
+            // Se il campo non è clonabile ma il valore è un array, restituiamo il primo elemento
+            return isset($value[0]) ? $value[0] : '';
+        }
+        
+        // Gestisci i valori vuoti
+        if (empty($value)) {
+            return $isCloneable ? new \AIFB\BreakdanceMetaBox\Core\MetaBoxRepeaterData([]) : '';
         }
         
         return $value;
@@ -391,8 +549,11 @@ class MetaBoxField extends \Breakdance\Elements\Element
 
     public function getFieldLabel($fieldId)
     {
-        // Ottieni l'istanza di MetaBoxIntegration
-        $metaBoxIntegration = MetaBoxIntegration::getInstance();
+        // Ottieni l'istanza di MetaBoxIntegration una sola volta
+        static $metaBoxIntegration = null;
+        if ($metaBoxIntegration === null) {
+            $metaBoxIntegration = \AIFB\BreakdanceMetaBox\Core\MetaBoxIntegration::getInstance();
+        }
         
         // Ottieni tutti i campi disponibili
         $fields = $metaBoxIntegration->getAvailableFields();
@@ -407,16 +568,24 @@ class MetaBoxField extends \Breakdance\Elements\Element
 
     public static function getMetaBoxFields()
     {
+        // Utilizzo una cache statica per evitare chiamate ripetute
+        static $cachedFields = null;
+        
+        if ($cachedFields !== null) {
+            return $cachedFields;
+        }
+        
         // Ottieni l'istanza di MetaBoxIntegration
-        $metaBoxIntegration = MetaBoxIntegration::getInstance();
+        $metaBoxIntegration = \AIFB\BreakdanceMetaBox\Core\MetaBoxIntegration::getInstance();
         
         // Ottieni tutti i campi disponibili
         $fields = $metaBoxIntegration->getAvailableFields();
         
         if (empty($fields)) {
-            return [
+            $cachedFields = [
                 ['text' => 'No MetaBox fields found', 'value' => '']
             ];
+            return $cachedFields;
         }
         
         $result = [];
@@ -434,11 +603,121 @@ class MetaBoxField extends \Breakdance\Elements\Element
         }
         
         if (empty($result)) {
-            return [
+            $cachedFields = [
                 ['text' => 'No URL or text fields found', 'value' => '']
             ];
+            return $cachedFields;
         }
         
-        return $result;
+        $cachedFields = $result;
+        return $cachedFields;
+    }
+
+    /**
+     * Definisce le dipendenze dell'elemento
+     */
+    static function dependencies()
+    {
+        return [
+            '0' => [
+                'title' => 'MetaBox Field',
+                'styles' => ['%%BREAKDANCE_ELEMENTS_PLUGIN_URL%%elements/metabox/default.css'],
+            ]
+        ];
+    }
+
+    /**
+     * Definisce le impostazioni dell'elemento
+     */
+    static function settings()
+    {
+        return [
+            'proOnly' => false,
+            'requiredPlugins' => ['MetaBox']
+        ];
+    }
+
+    /**
+     * Definisce le regole del pannello
+     */
+    static function addPanelRules()
+    {
+        return false;
+    }
+
+    /**
+     * Definisce le azioni JavaScript dell'elemento
+     */
+    static public function actions()
+    {
+        return [
+            'onMountedElement' => [
+                [
+                    'script' => '
+                    // Inizializzazione dell\'elemento MetaBox Field
+                    console.log("MetaBox Field mounted", { 
+                        id: "%%ID%%", 
+                        selector: "%%SELECTOR%%"
+                    });
+                    '
+                ]
+            ],
+            'onPropertyChange' => [
+                [
+                    'script' => '
+                    // Aggiornamento dell\'elemento quando cambiano le proprietà
+                    console.log("MetaBox Field property changed", { 
+                        id: "%%ID%%", 
+                        selector: "%%SELECTOR%%"
+                    });
+                    '
+                ]
+            ],
+            'onBeforeDeletingElement' => [
+                [
+                    'script' => '
+                    // Pulizia prima della rimozione dell\'elemento
+                    console.log("MetaBox Field will be deleted", { 
+                        id: "%%ID%%", 
+                        selector: "%%SELECTOR%%"
+                    });
+                    '
+                ]
+            ]
+        ];
+    }
+
+    /**
+     * Itera su un campo clonabile e applica una funzione di callback
+     * 
+     * @param string $fieldId ID del campo
+     * @param callable $callback Funzione di callback
+     * @return array Risultati dell'iterazione
+     */
+    public function iterateCloneableField(string $fieldId, callable $callback): array {
+        // Ottieni l'istanza di MetaBoxIntegration una sola volta
+        static $metaBoxIntegration = null;
+        if ($metaBoxIntegration === null) {
+            $metaBoxIntegration = \AIFB\BreakdanceMetaBox\Core\MetaBoxIntegration::getInstance();
+        }
+        
+        return $metaBoxIntegration->iterateCloneableField($fieldId, $callback);
+    }
+    
+    /**
+     * Ottiene un elemento specifico di un campo clonabile
+     * 
+     * @param string $fieldId ID del campo
+     * @param int $index Indice dell'elemento
+     * @return mixed Valore dell'elemento
+     */
+    public function getCloneableFieldItem(string $fieldId, int $index): mixed {
+        // Ottieni l'istanza di MetaBoxIntegration una sola volta
+        static $metaBoxIntegration = null;
+        if ($metaBoxIntegration === null) {
+            $metaBoxIntegration = \AIFB\BreakdanceMetaBox\Core\MetaBoxIntegration::getInstance();
+        }
+        
+        return $metaBoxIntegration->getCloneableFieldItem($fieldId, $index);
     }
 } 
