@@ -92,7 +92,27 @@ final class Plugin
      */
     private function __construct()
     {
-        // Define basic constants that don't depend on plugin_basename
+        // Define basic constants
+        $this->define_constants();
+        
+        // Initialize plugin_basename
+        $this->plugin_basename = \plugin_basename(AIFB_BMB_FILE);
+        define('AIFB_BMB_BASENAME', $this->plugin_basename);
+
+        // Check requirements before proceeding
+        if (!$this->checkRequirements()) {
+            return;
+        }
+
+        $this->initializePlugin();
+        $this->registerHooks();
+    }
+
+    /**
+     * Define plugin constants
+     */
+    private function define_constants(): void
+    {
         if (!defined('AIFB_BMB_VERSION')) {
             define('AIFB_BMB_VERSION', self::VERSION);
         }
@@ -105,19 +125,6 @@ final class Plugin
         if (!defined('AIFB_BMB_URL')) {
             define('AIFB_BMB_URL', plugin_dir_url(__FILE__));
         }
-        // Initialize plugin_basename
-        $this->plugin_basename = \plugin_basename(AIFB_BMB_FILE);
-
-        // Define constants that depend on plugin_basename
-        define('AIFB_BMB_BASENAME', $this->plugin_basename);
-
-        // Check requirements before proceeding
-        if (!$this->checkRequirements()) {
-            return;
-        }
-
-        $this->initializePlugin();
-        $this->registerHooks();
     }
 
     /**
@@ -291,6 +298,7 @@ final class Plugin
      */
     public function registerElementLocations(): void
     {
+        // Allineato con l'esempio di Breakdance su GitHub
         $locations = [
             'elements' => __('Custom Elements', 'aifb-breakdance-metabox'),
             'macros' => __('Custom Macros', 'aifb-breakdance-metabox'),

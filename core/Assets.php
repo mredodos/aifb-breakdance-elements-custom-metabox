@@ -4,7 +4,7 @@ namespace AIFB\BreakdanceMetaBox\Core;
 
 /**
  * Class Assets
- * Gestisce gli asset CSS e JS
+ * Gestisce gli asset CSS
  */
 class Assets {
     /**
@@ -35,66 +35,96 @@ class Assets {
      * Inizializza gli asset
      */
     private function init(): void {
-        // Registra gli asset
-        add_action('wp_enqueue_scripts', [$this, 'registerAssets']);
+        // Registra e carica gli stili CSS
+        add_action('wp_enqueue_scripts', [$this, 'registerFrontendStyles']);
         
-        // Registra gli asset per l'admin
-        add_action('admin_enqueue_scripts', [$this, 'registerAdminAssets']);
+        // Registra e carica gli stili CSS per l'admin
+        add_action('admin_enqueue_scripts', [$this, 'registerAdminStyles']);
+        
+        // Aggiungi stili inline per Breakdance - usando wp_enqueue_scripts con priorità alta
+        add_action('wp_enqueue_scripts', [$this, 'addBreakdanceStyles'], 999);
     }
 
     /**
-     * Registra gli asset per il frontend
+     * Registra e carica gli stili per il frontend
      */
-    public function registerAssets(): void {
+    public function registerFrontendStyles(): void {
         // Registra e carica il CSS
-        wp_register_style(
+        wp_enqueue_style(
             'aifb-metabox-field',
             AIFB_BMB_URL . 'assets/css/metabox-field.css',
             [],
             AIFB_BMB_VERSION
         );
-        
-        // Registra e carica il JS
-        wp_register_script(
-            'aifb-metabox-field',
-            AIFB_BMB_URL . 'assets/js/metabox-field.js',
-            ['jquery'],
-            AIFB_BMB_VERSION,
-            true
-        );
     }
 
     /**
-     * Registra gli asset per l'admin
+     * Registra e carica gli stili per l'admin
      */
-    public function registerAdminAssets(): void {
+    public function registerAdminStyles(): void {
         // Registra e carica il CSS per l'admin
-        wp_register_style(
+        wp_enqueue_style(
             'aifb-metabox-field-admin',
             AIFB_BMB_URL . 'assets/css/metabox-field-admin.css',
             [],
             AIFB_BMB_VERSION
         );
-        
-        // Registra e carica il JS per l'admin
-        wp_register_script(
-            'aifb-metabox-field-admin',
-            AIFB_BMB_URL . 'assets/js/metabox-field-admin.js',
-            ['jquery'],
-            AIFB_BMB_VERSION,
-            true
-        );
     }
-
+    
     /**
-     * Carica gli asset per un elemento specifico
-     *
-     * @param string $element Nome dell'elemento
+     * Aggiungi stili inline per Breakdance
+     * Questo è un approccio migliore per assicurarsi che gli stili siano disponibili nel builder
      */
-    public function enqueueElementAssets(string $element): void {
-        if ($element === 'metabox-field') {
-            wp_enqueue_style('aifb-metabox-field');
-            wp_enqueue_script('aifb-metabox-field');
+    public function addBreakdanceStyles(): void {
+        // Verifica se Breakdance è attivo e se lo stile 'breakdance' è stato registrato
+        if (!wp_style_is('breakdance', 'registered')) {
+            return;
         }
+        
+        // Aggiungi stili inline per il builder di Breakdance
+        $styles = '
+        .aifb-metabox-field {
+            width: 100%;
+            margin-bottom: 15px;
+        }
+        
+        .aifb-metabox-field-label {
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+        
+        .aifb-metabox-field-content {
+            line-height: 1.5;
+        }
+        
+        .aifb-metabox-field-error,
+        .aifb-metabox-field-fallback {
+            padding: 10px;
+            border-radius: 4px;
+        }
+        
+        .aifb-metabox-field-error {
+            background-color: #ffebee;
+            color: #c62828;
+        }
+        
+        .aifb-metabox-field-fallback {
+            background-color: #f5f5f5;
+            color: #757575;
+        }
+        
+        .aifb-metabox-field-clonable {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        
+        .aifb-metabox-field-clone-item {
+            padding: 5px 0;
+        }
+        ';
+        
+        // Aggiungi gli stili inline
+        wp_add_inline_style('breakdance', $styles);
     }
 } 

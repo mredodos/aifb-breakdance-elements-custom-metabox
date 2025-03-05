@@ -433,16 +433,28 @@ class MetaBoxField extends \Breakdance\Elements\Element
         }
 
         try {
+            // Generate a cache key based on the field and current post
+            $post_id = get_the_ID();
+            $cache_key = 'aifb_metabox_field_' . md5($fieldId . '_' . $post_id . '_' . $fieldType . '_' . (int)$isClonable);
+            $cached_output = wp_cache_get($cache_key, 'aifb_metabox');
+            
+            if (false !== $cached_output) {
+                return $cached_output;
+            }
+            
             // Get field value
             $fieldValue = self::getFieldValue($fieldId, $isClonable);
             
             // If no value and fallback is set, use fallback
             if (empty($fieldValue) && !empty($fallback)) {
-                return '<div class="aifb-metabox-field-fallback">' . esc_html($fallback) . '</div>';
+                $output = '<div class="aifb-metabox-field-fallback">' . esc_html($fallback) . '</div>';
+                wp_cache_set($cache_key, $output, 'aifb_metabox', 5 * MINUTE_IN_SECONDS);
+                return $output;
             }
 
             // If no value and no fallback, return empty
             if (empty($fieldValue)) {
+                wp_cache_set($cache_key, '', 'aifb_metabox', 5 * MINUTE_IN_SECONDS);
                 return '';
             }
 
@@ -466,8 +478,14 @@ class MetaBoxField extends \Breakdance\Elements\Element
             $output .= '</div>';
             $output .= '</div>';
 
+            // Cache the output for 5 minutes
+            wp_cache_set($cache_key, $output, 'aifb_metabox', 5 * MINUTE_IN_SECONDS);
+            
             return $output;
         } catch (\Exception $e) {
+            // Log the error for debugging
+            error_log('AIFB MetaBox Field Render Error: ' . $e->getMessage());
+            
             return '<div class="aifb-metabox-field-error">Error rendering Meta Box field: ' . esc_html($e->getMessage()) . '</div>';
         }
     }
@@ -503,10 +521,34 @@ class MetaBoxField extends \Breakdance\Elements\Element
                 return '';
             }
             
-            return rwmb_meta($fieldId, '', $post_id);
+            // Check cache first
+            $cache_key = 'aifb_metabox_value_' . md5($fieldId . '_' . $post_id . '_' . (int)$isClonable);
+            $cached_value = wp_cache_get($cache_key, 'aifb_metabox_values');
+            
+            if (false !== $cached_value) {
+                return $cached_value;
+            }
+            
+            // Get the value and cache it
+            $value = rwmb_meta($fieldId, '', $post_id);
+            wp_cache_set($cache_key, $value, 'aifb_metabox_values', 5 * MINUTE_IN_SECONDS);
+            
+            return $value;
         }
 
-        return rwmb_meta($fieldId, '', $post->ID);
+        // Check cache first for post object
+        $cache_key = 'aifb_metabox_value_' . md5($fieldId . '_' . $post->ID . '_' . (int)$isClonable);
+        $cached_value = wp_cache_get($cache_key, 'aifb_metabox_values');
+        
+        if (false !== $cached_value) {
+            return $cached_value;
+        }
+        
+        // Get the value and cache it
+        $value = rwmb_meta($fieldId, '', $post->ID);
+        wp_cache_set($cache_key, $value, 'aifb_metabox_values', 5 * MINUTE_IN_SECONDS);
+        
+        return $value;
     }
 
     /**
@@ -665,6 +707,14 @@ class MetaBoxField extends \Breakdance\Elements\Element
             return [['text' => 'Meta Box plugin not active', 'value' => '']];
         }
 
+        // Use transient cache to improve performance
+        $cache_key = 'aifb_metabox_fields_' . get_the_ID();
+        $cached_fields = get_transient($cache_key);
+        
+        if (false !== $cached_fields) {
+            return $cached_fields;
+        }
+
         try {
             $fields = [];
             $registry = rwmb_get_registry('field');
@@ -705,8 +755,14 @@ class MetaBoxField extends \Breakdance\Elements\Element
                 return [['text' => 'No Meta Box fields found', 'value' => '']];
             }
             
+            // Cache the result for 1 hour
+            set_transient($cache_key, $fields, HOUR_IN_SECONDS);
+            
             return $fields;
         } catch (\Exception $e) {
+            // Log the error for debugging
+            error_log('AIFB MetaBox Field Error: ' . $e->getMessage());
+            
             // Return a fallback in case of any errors
             return [['text' => 'Error loading Meta Box fields', 'value' => '']];
         }
@@ -715,28 +771,37 @@ class MetaBoxField extends \Breakdance\Elements\Element
     static function cssTemplate()
     {
         return '
+        /* Base styles */
         %%SELECTOR%% {
             width: 100%;
+            display: block;
         }
         
+        /* Container styles */
         %%SELECTOR%% .aifb-metabox-field {
             {{ spacing.container.padding }}
             {{ spacing.container.margin }}
         }
         
+        /* Label styles */
         %%SELECTOR%% .aifb-metabox-field-label {
             {{ typography.label.style }}
             {{ spacing.label.margin }}
+            display: block;
         }
         
+        /* Content styles */
         %%SELECTOR%% .aifb-metabox-field-content {
             {{ typography.content.style }}
+            display: block;
         }
         
+        /* Error and fallback styles */
         %%SELECTOR%% .aifb-metabox-field-error,
         %%SELECTOR%% .aifb-metabox-field-fallback {
             padding: 10px;
             border-radius: 4px;
+            margin: 10px 0;
         }
         
         %%SELECTOR%% .aifb-metabox-field-error {
@@ -749,35 +814,50 @@ class MetaBoxField extends \Breakdance\Elements\Element
             color: #757575;
         }
         
+        /* Clonable field styles */
         %%SELECTOR%% .aifb-metabox-field-clonable {
             display: flex;
             flex-direction: column;
             gap: 10px;
+            width: 100%;
         }
         
         %%SELECTOR%% .aifb-metabox-field-clone-item {
             padding: 5px 0;
+            width: 100%;
         }
         
-        /* URL Field */
+        /* URL Field styles */
         %%SELECTOR%% .aifb-metabox-field-link {
             {{ links.button.style }}
+            display: inline-block;
         }
         
-        /* Image Field */
+        /* Image Field styles */
         %%SELECTOR%% .aifb-metabox-field-image {
             max-width: 100%;
             height: auto;
+            display: block;
             {% if images.size.width %}width: {{ images.size.width }};{% endif %}
             {% if images.size.height %}height: {{ images.size.height }};{% endif %}
             {% if images.size.object_fit and images.size.object_fit != "default" %}object-fit: {{ images.size.object_fit }};{% endif %}
         }
         
-        /* Video Field */
+        /* Video Field styles */
         %%SELECTOR%% .aifb-metabox-field-video {
             max-width: 100%;
+            display: block;
             {% if images.size.width %}width: {{ images.size.width }};{% endif %}
             {% if images.size.height %}height: {{ images.size.height }};{% endif %}
+        }
+        
+        /* Responsive styles */
+        @media (max-width: 767px) {
+            %%SELECTOR%% .aifb-metabox-field-image,
+            %%SELECTOR%% .aifb-metabox-field-video {
+                width: 100% !important;
+                height: auto !important;
+            }
         }
         ';
     }
