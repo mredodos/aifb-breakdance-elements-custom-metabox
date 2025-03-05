@@ -1,0 +1,29 @@
+.breakdance .bde-aifb-metabox-field {
+  max-width: 100%;
+  width: 100%;
+  text-align: left;
+  margin-bottom: 20px;
+}
+
+.breakdance .bde-aifb-metabox-field .aifb-metabox-field-label {
+  margin-bottom: 8px;
+  font-weight: 600;
+}
+
+.breakdance .bde-aifb-metabox-field .aifb-metabox-field-content {
+  line-height: 1.5;
+}
+
+/* Layout styles */
+.breakdance .bde-aifb-metabox-field .aifb-metabox-layout-card {
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.breakdance .bde-aifb-metabox-field .aifb-metabox-layout-inline {
+  display: flex;
+  align-items: center;
+}
+
+.breakdance .bde-aifb-metabox-field .aifb-metabox-layout-boxed {
+  border: 1px solid rgba(0, 0, 0, 0.1);
+}

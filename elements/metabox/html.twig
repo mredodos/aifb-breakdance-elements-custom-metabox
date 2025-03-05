@@ -1,0 +1,21 @@
+{% if content %}
+    <div class="aifb-metabox-field {{ layout_class }} {{ alignment_class }}">
+        {% if show_label and label %}
+            <div class="aifb-metabox-field-label">
+                {{ label }}
+            </div>
+        {% endif %}
+        
+        <div class="aifb-metabox-field-content">
+            {{ content|raw }}
+        </div>
+    </div>
+{% elseif fallback_content %}
+    <div class="aifb-metabox-field-fallback">
+        {{ fallback_content }}
+    </div>
+{% elseif is_builder %}
+    <div class="aifb-metabox-field-notice">
+        <p>{{ field_id ? 'Field "' ~ field_id ~ '" not found or empty.' : 'Please select a field.' }}</p>
+    </div>
+{% endif %} 

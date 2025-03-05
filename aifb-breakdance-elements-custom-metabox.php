@@ -207,7 +207,6 @@ final class Plugin
 
         // Initialize core components
         Core\Loader::getInstance();
-        Core\Assets::getInstance();
         Core\MetaBoxIntegration::getInstance();
 
         // Initialize admin if in admin area
@@ -217,6 +216,9 @@ final class Plugin
 
         // Register Element Studio locations when Breakdance is loaded
         add_action('breakdance_loaded', [$this, 'registerElementLocations'], 9);
+        
+        // Load elements when Breakdance is loaded
+        add_action('breakdance_loaded', [$this, 'loadElements'], 10);
     }
 
     /**
@@ -300,17 +302,26 @@ final class Plugin
     {
         // Allineato con l'esempio di Breakdance su GitHub
         $locations = [
-            'elements' => __('Custom Elements', 'aifb-breakdance-metabox'),
-            'macros' => __('Custom Macros', 'aifb-breakdance-metabox'),
-            'presets' => __('Custom Presets', 'aifb-breakdance-metabox')
+            'elements' => [
+                'label' => __('Custom Elements', 'aifb-breakdance-metabox'),
+                'type' => 'element'
+            ],
+            'macros' => [
+                'label' => __('Custom Macros', 'aifb-breakdance-metabox'),
+                'type' => 'macro'
+            ],
+            'presets' => [
+                'label' => __('Custom Presets', 'aifb-breakdance-metabox'),
+                'type' => 'preset'
+            ]
         ];
 
-        foreach ($locations as $dir => $label) {
+        foreach ($locations as $dir => $config) {
             \Breakdance\ElementStudio\registerSaveLocation(
                 $this->getRelativePath($dir),
                 'AIFB\\BreakdanceMetaBox',
-                $dir === 'elements' ? 'element' : $dir,
-                $label,
+                $config['type'],
+                $config['label'],
                 false
             );
         }
@@ -384,6 +395,17 @@ final class Plugin
             esc_url($install_url),
             esc_html__('Install Breakdance', 'aifb-breakdance-metabox')
         );
+    }
+
+    /**
+     * Load custom elements
+     *
+     * @return void
+     */
+    public function loadElements(): void
+    {
+        // Include the Meta Box Field element
+        require_once AIFB_BMB_PATH . 'elements/metabox/metabox-field.php';
     }
 }
 

@@ -35,25 +35,8 @@ class MetaBoxIntegration {
      * Inizializza l'integrazione
      */
     private function init(): void {
-        // Registra gli elementi personalizzati
-        add_action('breakdance_register_elements', [$this, 'registerElements']);
-        
         // Aggiungi supporto per i campi clonabili
         add_filter('breakdance_dynamic_data_preview_value', [$this, 'handleClonableFields'], 10, 2);
-    }
-
-    /**
-     * Registra gli elementi personalizzati
-     */
-    public function registerElements(): void {
-        if (!class_exists('RWMB_Loader')) {
-            return;
-        }
-
-        // Registra l'elemento Meta Box Field
-        \Breakdance\Elements\register(
-            'AIFB\BreakdanceMetaBox\Elements\MetaBoxField'
-        );
     }
 
     /**

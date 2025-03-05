@@ -1,0 +1,172 @@
+{% set breakpoint = breakpoint ?? null %}
+
+{% macro spacing(obj, selector) %}
+    {% if obj.padding.top.style %}
+        {{ selector }} {
+            padding-top: {{ obj.padding.top.style }};
+            padding-right: {{ obj.padding.right.style }};
+            padding-bottom: {{ obj.padding.bottom.style }};
+            padding-left: {{ obj.padding.left.style }};
+            margin-top: {{ obj.margin.top.style }};
+            margin-right: {{ obj.margin.right.style }};
+            margin-bottom: {{ obj.margin.bottom.style }};
+            margin-left: {{ obj.margin.left.style }};
+        }
+    {% endif %}
+{% endmacro %}
+
+{% macro typography(obj, selector) %}
+    {% if obj.typography.font.family %}
+        {{ selector }} {
+            {% if obj.typography.font.family %}font-family: {{ obj.typography.font.family }};{% endif %}
+            {% if obj.typography.font.weight %}font-weight: {{ obj.typography.font.weight }};{% endif %}
+            {% if obj.typography.font.style %}font-style: {{ obj.typography.font.style }};{% endif %}
+            {% if obj.typography.font.size.style %}font-size: {{ obj.typography.font.size.style }};{% endif %}
+            {% if obj.typography.font.letterSpacing.style %}letter-spacing: {{ obj.typography.font.letterSpacing.style }};{% endif %}
+            {% if obj.typography.font.lineHeight.style %}line-height: {{ obj.typography.font.lineHeight.style }};{% endif %}
+            {% if obj.typography.textAlign %}text-align: {{ obj.typography.textAlign }};{% endif %}
+            {% if obj.typography.decoration %}text-decoration: {{ obj.typography.decoration }};{% endif %}
+            {% if obj.typography.transform %}text-transform: {{ obj.typography.transform }};{% endif %}
+            {% if obj.color.hex %}color: {{ obj.color.hex }};{% endif %}
+        }
+    {% endif %}
+{% endmacro %}
+
+{% import _self as macros %}
+
+{# Base styles #}
+.breakdance .bde-aifb-metabox-field {
+    width: 100%;
+    display: block;
+}
+
+{# Container styles #}
+.breakdance .bde-aifb-metabox-field .aifb-metabox-field {
+    padding: 15px;
+    background-color: {{ design.container.background.color.hex|default('transparent') }};
+    border-radius: {{ design.container.border_radius.style|default('0px') }};
+    {% if design.container.border.width.style %}
+        border-width: {{ design.container.border.width.style }};
+        border-style: {{ design.container.border.style|default('solid') }};
+        border-color: {{ design.container.border.color.hex|default('#e0e0e0') }};
+    {% endif %}
+}
+
+{# Layout styles #}
+{% if design.layout.style == 'card' %}
+    .breakdance .bde-aifb-metabox-field .aifb-metabox-layout-card {
+        box-shadow: {{ design.layout.card.shadow.style|default('0 2px 8px rgba(0, 0, 0, 0.1)') }};
+        background-color: {{ design.layout.card.background.color.hex|default('#ffffff') }};
+        border-radius: {{ design.layout.card.border_radius.style|default('8px') }};
+        padding: 20px;
+    }
+{% endif %}
+
+{% if design.layout.style == 'inline' %}
+    .breakdance .bde-aifb-metabox-field .aifb-metabox-layout-inline {
+        display: flex;
+        align-items: {{ design.layout.inline.vertical_alignment|default('center') }};
+        gap: {{ design.layout.inline.gap.style|default('15px') }};
+    }
+    
+    .breakdance .bde-aifb-metabox-field .aifb-metabox-layout-inline .aifb-metabox-field-label {
+        flex: 0 0 {{ design.layout.inline.label_width.style|default('30%') }};
+        margin-bottom: 0;
+    }
+{% endif %}
+
+{% if design.layout.style == 'boxed' %}
+    .breakdance .bde-aifb-metabox-field .aifb-metabox-layout-boxed {
+        border: 1px solid {{ design.layout.boxed.border_color.hex|default('rgba(0, 0, 0, 0.1)') }};
+        border-radius: {{ design.layout.boxed.border_radius.style|default('4px') }};
+        padding: {{ design.layout.boxed.padding.style|default('15px') }};
+    }
+{% endif %}
+
+{# Alignment styles #}
+.breakdance .bde-aifb-metabox-field .aifb-metabox-align-center {
+    text-align: center;
+}
+
+.breakdance .bde-aifb-metabox-field .aifb-metabox-align-right {
+    text-align: right;
+}
+
+.breakdance .bde-aifb-metabox-field .aifb-metabox-align-left {
+    text-align: left;
+}
+
+{# Label styles #}
+{{ macros.typography(design.typography.label, '.breakdance .bde-aifb-metabox-field .aifb-metabox-field-label') }}
+
+{# Content styles #}
+{{ macros.typography(design.typography.content, '.breakdance .bde-aifb-metabox-field .aifb-metabox-field-content') }}
+
+{# Error and fallback styles #}
+.breakdance .bde-aifb-metabox-field .aifb-metabox-field-notice,
+.breakdance .bde-aifb-metabox-field .aifb-metabox-field-error,
+.breakdance .bde-aifb-metabox-field .aifb-metabox-field-fallback {
+    padding: 10px 15px;
+    border-radius: 4px;
+    background-color: #f8f9fa;
+    border: 1px solid #e9ecef;
+    color: #6c757d;
+}
+
+.breakdance .bde-aifb-metabox-field .aifb-metabox-field-error {
+    background-color: #f8d7da;
+    border-color: #f5c6cb;
+    color: #721c24;
+}
+
+{# Conditional notice styles #}
+.breakdance .bde-aifb-metabox-field .aifb-metabox-conditional-notice {
+    font-style: italic;
+    color: #6c757d;
+    margin-top: 5px;
+    font-size: 0.9em;
+}
+
+{# Clonable field styles #}
+.breakdance .bde-aifb-metabox-field .aifb-metabox-cloneable-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.breakdance .bde-aifb-metabox-field .aifb-metabox-cloneable-list li {
+    padding: 8px 0;
+    border-bottom: 1px solid #e9ecef;
+}
+
+.breakdance .bde-aifb-metabox-field .aifb-metabox-cloneable-list li:last-child {
+    border-bottom: none;
+}
+
+{# Spacing #}
+{{ macros.spacing(design.spacing, '.breakdance .bde-aifb-metabox-field') }}
+
+{# Responsive styles #}
+{% if breakpoint == 'tablet' %}
+    .breakdance .bde-aifb-metabox-field .aifb-metabox-layout-inline {
+        flex-direction: {{ design.layout.inline.tablet.direction|default('row') }};
+    }
+    
+    {% if design.layout.inline.tablet.direction == 'column' %}
+        .breakdance .bde-aifb-metabox-field .aifb-metabox-layout-inline .aifb-metabox-field-label {
+            flex: 0 0 100%;
+            margin-bottom: 8px;
+        }
+    {% endif %}
+{% endif %}
+
+{% if breakpoint == 'mobile' %}
+    .breakdance .bde-aifb-metabox-field .aifb-metabox-layout-inline {
+        flex-direction: column;
+    }
+    
+    .breakdance .bde-aifb-metabox-field .aifb-metabox-layout-inline .aifb-metabox-field-label {
+        flex: 0 0 100%;
+        margin-bottom: 8px;
+    }
+{% endif %} 
