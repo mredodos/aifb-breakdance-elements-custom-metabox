@@ -1,0 +1,98 @@
+/**
+ * Meta Box Field Styles
+ */
+
+.aifb-metabox-field {
+  margin-bottom: 20px;
+}
+
+.aifb-metabox-field-label {
+  font-weight: bold;
+  margin-bottom: 5px;
+}
+
+.aifb-metabox-field-content {
+  width: 100%;
+}
+
+.aifb-metabox-field-error {
+  padding: 10px;
+  border-radius: 4px;
+  background-color: #ffebee;
+  color: #c62828;
+}
+
+.aifb-metabox-field-fallback {
+  padding: 10px;
+  border-radius: 4px;
+  background-color: #f5f5f5;
+  color: #757575;
+}
+
+/* Clonable Fields */
+.aifb-metabox-field-clonable {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.aifb-metabox-field-clone-item {
+  padding: 5px 0;
+  border-bottom: 1px solid #eee;
+}
+
+.aifb-metabox-field-clone-item:last-child {
+  border-bottom: none;
+}
+
+/* URL Field */
+.aifb-metabox-field-link {
+  display: inline-block;
+  padding: 8px 16px;
+  background-color: #2271b1;
+  color: #fff;
+  text-decoration: none;
+  border-radius: 4px;
+  transition: background-color 0.3s ease;
+}
+
+.aifb-metabox-field-link:hover {
+  background-color: #135e96;
+  color: #fff;
+}
+
+/* Image Field */
+.aifb-metabox-field-image {
+  max-width: 100%;
+  height: auto;
+  border-radius: 4px;
+}
+
+/* File Field */
+.aifb-metabox-field-file {
+  display: inline-flex;
+  align-items: center;
+  padding: 8px 16px;
+  background-color: #f0f0f1;
+  color: #3c434a;
+  text-decoration: none;
+  border-radius: 4px;
+  transition: background-color 0.3s ease;
+}
+
+.aifb-metabox-field-file:before {
+  content: '\f498';
+  font-family: dashicons;
+  margin-right: 8px;
+}
+
+.aifb-metabox-field-file:hover {
+  background-color: #e5e5e5;
+  color: #3c434a;
+}
+
+/* Video Field */
+.aifb-metabox-field-video {
+  max-width: 100%;
+  border-radius: 4px;
+}
